@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Workday Productivity Calculator</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Productivity">
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --text:#e2e8f0;
+    --muted:#94a3b8; --accent:#38bdf8; --accent2:#22c55e; --warn:#f59e0b;
+    --border:#334155;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.45;
+    padding:0 0 24px; min-height:100vh;
+  }
+  .wrap{max-width:560px; margin:0 auto; padding:0 16px;}
+  header{padding:20px 0 8px;}
+  h1{font-size:1.35rem; margin:0 0 2px; font-weight:700; letter-spacing:-.01em;}
+  .sub{color:var(--muted); font-size:.85rem; margin:0;}
+  .tabs{display:flex; gap:8px; margin:18px 0 14px; background:var(--panel); padding:4px; border-radius:12px;}
+  .tab{flex:1; text-align:center; padding:10px 6px; border:none; background:transparent; color:var(--muted);
+    font-size:.9rem; font-weight:600; border-radius:9px; cursor:pointer;}
+  .tab.active{background:var(--panel2); color:var(--text);}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:12px;}
+  .field{margin-bottom:12px;}
+  .field:last-child{margin-bottom:0;}
+  .field>span{display:block; font-size:.78rem; color:var(--muted); margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
+  .split{display:flex; align-items:center; gap:8px;}
+  .split input{flex:1; min-width:0;}
+  .split em{font-style:normal; color:var(--muted); font-size:.85rem;}
+  input,select{
+    background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    border-radius:10px; padding:11px 12px; font-size:1rem; width:100%;
+  }
+  input:focus,select:focus{outline:2px solid var(--accent); outline-offset:0; border-color:transparent;}
+  input[type=number]{-moz-appearance:textfield; text-align:center;}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+  input[type=time]{text-align:center;}
+  .hint{font-size:.75rem; color:var(--muted); margin-top:5px;}
+  .rounded{font-size:.75rem; color:var(--accent); margin-top:4px; font-weight:600;}
+  .results .row{display:flex; justify-content:space-between; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--border);}
+  .results .row:last-child{border-bottom:none;}
+  .row .k{color:var(--muted); font-size:.85rem;}
+  .row .v{font-size:1.15rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .big{font-size:2.4rem; font-weight:800; text-align:center; letter-spacing:-.02em;}
+  .big small{font-size:1rem; color:var(--muted); font-weight:600;}
+  .level{display:inline-block; padding:4px 12px; border-radius:999px; font-size:.8rem; font-weight:700; margin-top:6px;}
+  .lvl-vlow{background:#7f1d1d; color:#fecaca;}
+  .lvl-low{background:#78350f; color:#fed7aa;}
+  .lvl-avg{background:#78350f; color:#fde68a;}
+  .lvl-good{background:#14532d; color:#bbf7d0;}
+  .lvl-exc{background:#14532d; color:#86efac;}
+  .suggest{font-size:.85rem; color:var(--muted); text-align:center; margin-top:12px; padding:10px; background:var(--panel2); border-radius:10px;}
+  .chiprow{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .chip{background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:999px;
+    padding:6px 12px; font-size:.8rem; font-weight:600; cursor:pointer;}
+  .chip:active{background:var(--accent); color:#0f172a; border-color:var(--accent);}
+  .accent{color:var(--accent);} .good{color:var(--accent2);} .warn{color:var(--warn);}
+  footer{color:var(--muted); font-size:.72rem; text-align:center; margin-top:20px; line-height:1.5;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Workday Productivity Calculator</h1>
+    <p class="sub">Round-to-15 timekeeping · offline · installable</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" id="tabScore">Productivity Score</button>
+    <button class="tab" id="tabEnd">Perfect End Time</button>
+  </div>
+
+  <!-- ============ SCORE MODE ============ -->
+  <div id="scoreMode">
+    <div class="card">
+      <div class="field">
+        <span>Total work time</span>
+        <div class="split">
+          <input type="number" id="sh" inputmode="numeric" min="0" placeholder="0"><em>h</em>
+          <input type="number" id="sm" inputmode="numeric" min="0" max="59" step="5" placeholder="0"><em>m</em>
+        </div>
+        <div class="hint">Full work or study time today.</div>
+      </div>
+      <div class="field">
+        <span>Productive time</span>
+        <div class="split">
+          <input type="number" id="ph" inputmode="numeric" min="0" placeholder="0"><em>h</em>
+          <input type="number" id="pm" inputmode="numeric" min="0" max="59" step="5" placeholder="0"><em>m</em>
+        </div>
+        <div class="hint">Time spent on meaningful output.</div>
+      </div>
+    </div>
+
+    <div class="card results hidden" id="scoreResults">
+      <div class="big"><span id="scoreRate">0</span>%</div>
+      <div style="text-align:center;"><span class="level" id="scoreLevel">&mdash;</span></div>
+      <div class="row"><span class="k">Productivity score</span><span class="v"><span id="score100">0</span>/100</span></div>
+      <div class="row"><span class="k">Time lost</span><span class="v" id="scoreLost">0h 0m</span></div>
+      <div class="suggest" id="scoreSuggest"></div>
+    </div>
+  </div>
+
+  <!-- ============ PERFECT END TIME MODE ============ -->
+  <div id="endMode" class="hidden">
+    <div class="card">
+      <div class="field">
+        <span>Start time</span>
+        <input type="time" id="startTime">
+        <div class="rounded hidden" id="startRounded"></div>
+      </div>
+      <div class="field">
+        <span>Lunch out</span>
+        <input type="time" id="lunchOut">
+        <div class="rounded hidden" id="lunchOutRounded"></div>
+      </div>
+      <div class="field">
+        <span>Lunch back in</span>
+        <input type="time" id="lunchIn">
+        <div class="rounded hidden" id="lunchInRounded"></div>
+      </div>
+      <div class="field">
+        <span>Billable time</span>
+        <div class="split">
+          <input type="number" id="bh" inputmode="numeric" min="0" placeholder="0"><em>h</em>
+          <input type="number" id="bm" inputmode="numeric" min="0" max="59" step="5" placeholder="0"><em>m</em>
+        </div>
+        <div class="chiprow">
+          <button class="chip" data-add="15">+15m</button>
+          <button class="chip" data-add="30">+30m</button>
+          <button class="chip" data-add="45">+45m</button>
+          <button class="chip" data-add="60">+1h</button>
+        </div>
+      </div>
+      <div class="field">
+        <span>Productivity target %</span>
+        <input type="number" id="target" inputmode="numeric" min="1" max="200" value="85">
+      </div>
+      <div class="field">
+        <span>Clock out (leave blank to solve for it)</span>
+        <input type="time" id="clockOut">
+        <div class="rounded hidden" id="clockOutRounded"></div>
+      </div>
+    </div>
+
+    <div class="card results hidden" id="endResults">
+      <div class="row"><span class="k">Rounded lunch</span><span class="v" id="lunchShown">&mdash;</span></div>
+      <div class="row"><span class="k">Paid hours</span><span class="v" id="paidShown">&mdash;</span></div>
+      <div class="row"><span class="k">Productivity</span><span class="v" id="prodShown">&mdash;</span></div>
+      <div class="row"><span class="k">Clock out at</span><span class="v accent" id="clockOutShown">&mdash;</span></div>
+      <div class="row"><span class="k">Billable to hit goal</span><span class="v" id="needShown">&mdash;</span></div>
+    </div>
+  </div>
+
+  <footer>
+    Formulas: Productivity Rate = Productive &divide; Total &times; 100 &nbsp;·&nbsp; Total Worked = Billable &divide; (Target &divide; 100).<br>
+    Clock times round to the nearest 15 min (7.5-min rule). Planning math only &mdash; confirm billing policy with your organization.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const R = m => Math.round(m/15)*15;
+
+  function toMin(t){ if(!t) return null; const [h,m]=t.split(':').map(Number); return h*60+m; }
+  function fmt12(m){ m=((m%1440)+1440)%1440; let h=Math.floor(m/60), mm=m%60;
+    const ap = h>=12?'PM':'AM'; h=h%12; if(h===0)h=12;
+    return h+':'+String(mm).padStart(2,'0')+' '+ap; }
+  function fmtHM(m){ m=Math.max(0,Math.round(m)); const h=Math.floor(m/60), mm=m%60;
+    return h+'h '+mm+'m'; }
+
+  // ---- tab switching ----
+  const tabScore=$('tabScore'), tabEnd=$('tabEnd'), scoreMode=$('scoreMode'), endMode=$('endMode');
+  function setTab(which){
+    const s = which==='score';
+    tabScore.classList.toggle('active',s); tabEnd.classList.toggle('active',!s);
+    scoreMode.classList.toggle('hidden',!s); endMode.classList.toggle('hidden',s);
+    s ? calcScore() : calcEnd();
+  }
+  tabScore.onclick=()=>setTab('score');
+  tabEnd.onclick=()=>setTab('end');
+
+  // ---- score mode ----
+  const sh=$('sh'),sm=$('sm'),ph=$('ph'),pm=$('pm');
+  function calcScore(){
+    const total=(+sh.value||0)*60+(+sm.value||0);
+    const prod=(+ph.value||0)*60+(+pm.value||0);
+    const res=$('scoreResults');
+    if(total<=0){ res.classList.add('hidden'); return; }
+    res.classList.remove('hidden');
+    const rate = prod/total*100;
+    $('scoreRate').textContent = rate.toFixed(1);
+    $('score100').textContent = Math.round(rate);
+    $('scoreLost').textContent = fmtHM(total-prod);
+    let lvl,cls,sug;
+    if(rate<40){ lvl='Very Low'; cls='lvl-vlow'; sug='Gentle signal to simplify tomorrow \u2014 fewer meetings, smaller task list.'; }
+    else if(rate<60){ lvl='Low'; cls='lvl-low'; sug='Some output happened, but distractions took space. Block one deep-work hour.'; }
+    else if(rate<75){ lvl='Average'; cls='lvl-avg'; sug='A workable day \u2014 protect one more hour of focus and it becomes good.'; }
+    else if(rate<90){ lvl='Good'; cls='lvl-good'; sug='A focused day. Trim a little low-value time and it becomes excellent.'; }
+    else { lvl='Excellent'; cls='lvl-exc'; sug='A strong focus day \u2014 keep sustainable breaks so it stays this way.'; }
+    const el=$('scoreLevel'); el.textContent=lvl; el.className='level '+cls;
+    $('scoreSuggest').textContent=sug;
+  }
+  [sh,sm,ph,pm].forEach(i=>i.addEventListener('input',calcScore));
+
+  // ---- end mode ----
+  const startTime=$('startTime'), lunchOut=$('lunchOut'), lunchIn=$('lunchIn');
+  const bh=$('bh'), bm=$('bm'), target=$('target'), clockOut=$('clockOut');
+
+  function showRounded(id, inp, val){
+    const el=$(id);
+    if(val!==null && inp.value){ el.textContent='rounds to '+fmt12(val); el.classList.remove('hidden'); }
+    else el.classList.add('hidden');
+  }
+
+  function calcEnd(){
+    const st=toMin(startTime.value), lo=toMin(lunchOut.value), li=toMin(lunchIn.value), co=toMin(clockOut.value);
+    const stR = st===null?null:R(st), loR=lo===null?null:R(lo), liR=li===null?null:R(li), coR=co===null?null:R(co);
+    showRounded('startRounded', startTime, stR);
+    showRounded('lunchOutRounded', lunchOut, loR);
+    showRounded('lunchInRounded', lunchIn, liR);
+    showRounded('clockOutRounded', clockOut, coR);
+
+    let lunch=0;
+    if(loR!==null && liR!==null){
+      let diff = liR - loR; if(diff<0) diff+=1440;
+      lunch = diff;
+    }
+    const billable=(+bh.value||0)*60+(+bm.value||0);
+    const tgt=+target.value||85;
+
+    const res=$('endResults');
+    const hasCore = stR!==null && billable>0;
+    if(!hasCore){ res.classList.add('hidden'); return; }
+    res.classList.remove('hidden');
+
+    $('lunchShown').textContent = (loR!==null&&liR!==null) ? fmtHM(lunch) : '\u2014';
+
+    let paid, prodPct;
+    if(coR!==null){ // backward: productivity from clock-out
+      let workMin = coR - stR; if(workMin<=0) workMin+=1440;
+      paid = Math.max(0, workMin - lunch);
+      prodPct = paid>0 ? billable/paid*100 : 0;
+      $('prodShown').textContent = prodPct.toFixed(1)+'%';
+      $('prodShown').className = 'v '+(prodPct>=tgt?'good':'warn');
+      $('clockOutShown').textContent = fmt12(coR);
+      const need = Math.round(paid * tgt/100);
+      const diff = need - billable;
+      const el=$('needShown');
+      el.textContent = fmtHM(need) + (diff>0 ? ' (+'+fmtHM(diff)+' to go)' : diff<0 ? ' ('+fmtHM(-diff)+' over)' : ' (on target)');
+      el.className = 'v '+(diff>0?'warn':(diff<0?'good':''));
+    } else { // forward: solve clock-out from target
+      const totalWorked = Math.round(billable / (tgt/100));
+      paid = totalWorked;
+      const finish = stR + totalWorked + lunch;
+      $('prodShown').textContent = tgt.toFixed(1)+'% (target)';
+      $('prodShown').className = 'v';
+      $('clockOutShown').textContent = fmt12(finish);
+      $('needShown').textContent = '\u2014';
+      $('needShown').className='v';
+    }
+    $('paidShown').textContent = fmtHM(paid);
+  }
+  [startTime,lunchOut,lunchIn,bh,bm,target,clockOut].forEach(i=>i.addEventListener('input',calcEnd));
+
+  // billable quick-add chips
+  document.querySelectorAll('.chip').forEach(c=>{
+    c.onclick=()=>{
+      const add=+c.dataset.add;
+      let t=(+bh.value||0)*60+(+bm.value||0)+add; if(t<0)t=0;
+      bh.value=Math.floor(t/60); bm.value=t%60;
+      calcEnd();
+    };
+  });
+
+  // default start time = now rounded to 15
+  if(!startTime.value){
+    const n=new Date(); const m=R(n.getHours()*60+n.getMinutes());
+    startTime.value=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  }
+
+  // remember settings (localStorage)
+  const KEYS=['sh','sm','ph','pm','startTime','lunchOut','lunchIn','bh','bm','target','clockOut'];
+  try{
+    KEYS.forEach(k=>{ const v=localStorage.getItem('pc_'+k); if(v!==null) $(k).value=v; });
+    KEYS.forEach(k=>{ const el=$(k); el.addEventListener('change',()=>localStorage.setItem('pc_'+k,el.value)); });
+  }catch(e){}
+
+  // service worker
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+
+  setTab('score');
+})();
+</script>
+</body>
+</html>
