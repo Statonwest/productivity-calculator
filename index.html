@@ -169,6 +169,7 @@
       <div class="row"><span class="k">Other non-billable</span><span class="v" id="otherShown">&mdash;</span></div>
       <div class="row"><span class="k">Paid hours</span><span class="v" id="paidShown">&mdash;</span></div>
       <div class="row"><span class="k">Productivity</span><span class="v" id="prodShown">&mdash;</span></div>
+      <div class="row"><span class="k">Productivity w/o that time</span><span class="v" id="prodNoMeeting">&mdash;</span></div>
       <div class="row"><span class="k">Clock out at</span><span class="v accent" id="clockOutShown">&mdash;</span></div>
       <div class="row"><span class="k">Billable to hit goal</span><span class="v" id="needShown">&mdash;</span></div>
     </div>
@@ -249,8 +250,7 @@
       let diff = liR - loR; if(diff<0) diff+=1440;
       lunch = diff;
     }
-    const unalloc=(+uh.value||0)*60+(+um.value||0);
-    const nonBill = lunch + unalloc;
+    const meeting=(+uh.value||0)*60+(+um.value||0);
     const billable=(+bh.value||0)*60+(+bm.value||0);
     const tgt=+target.value||85;
 
@@ -260,32 +260,43 @@
     res.classList.remove('hidden');
 
     $('lunchShown').textContent = (loR!==null&&liR!==null) ? fmtHM(lunch) : '\u2014';
-    $('otherShown').textContent = unalloc>0 ? fmtHM(unalloc) : '0m';
+    $('otherShown').textContent = meeting>0 ? fmtHM(meeting) : '0m';
+    const noMeetingRow = $('prodNoMeeting').closest('.row');
 
-    let paid, prodPct;
     if(coR!==null){ // backward: productivity from clock-out
       let workMin = coR - stR; if(workMin<=0) workMin+=1440;
-      paid = Math.max(0, workMin - nonBill);
-      prodPct = paid>0 ? billable/paid*100 : 0;
+      const paid = Math.max(0, workMin - lunch);          // meeting counts against you
+      const paidNoMeeting = Math.max(0, paid - meeting);  // hypothetical: no meeting
+      const prodPct = paid>0 ? billable/paid*100 : 0;
+      const prodNo = paidNoMeeting>0 ? billable/paidNoMeeting*100 : 0;
       $('prodShown').textContent = prodPct.toFixed(1)+'%';
       $('prodShown').className = 'v '+(prodPct>=tgt?'good':'warn');
+      if(meeting>0){
+        const d = prodNo - prodPct;
+        $('prodNoMeeting').textContent = prodNo.toFixed(1)+'% ('+(d>=0?'+':'')+d.toFixed(1)+' pts)';
+        $('prodNoMeeting').className = 'v good';
+        noMeetingRow.classList.remove('hidden');
+      } else {
+        noMeetingRow.classList.add('hidden');
+      }
       $('clockOutShown').textContent = fmt12(coR);
       const need = Math.round(paid * tgt/100);
       const diff = need - billable;
       const el=$('needShown');
       el.textContent = fmtHM(need) + (diff>0 ? ' (+'+fmtHM(diff)+' to go)' : diff<0 ? ' ('+fmtHM(-diff)+' over)' : ' (on target)');
       el.className = 'v '+(diff>0?'warn':(diff<0?'good':''));
+      $('paidShown').textContent = fmtHM(paid);
     } else { // forward: solve clock-out from target
       const totalWorked = Math.round(billable / (tgt/100));
-      paid = totalWorked;
-      const finish = stR + totalWorked + nonBill;
+      const finish = stR + totalWorked + lunch + meeting;
       $('prodShown').textContent = tgt.toFixed(1)+'% (target)';
       $('prodShown').className = 'v';
+      noMeetingRow.classList.add('hidden');
       $('clockOutShown').textContent = fmt12(finish);
       $('needShown').textContent = '\u2014';
       $('needShown').className='v';
+      $('paidShown').textContent = fmtHM(totalWorked + meeting);
     }
-    $('paidShown').textContent = fmtHM(paid);
   }
   [startTime,lunchOut,lunchIn,uh,um,bh,bm,target,clockOut].forEach(i=>i.addEventListener('input',calcEnd));
 
