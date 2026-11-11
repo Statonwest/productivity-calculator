@@ -1,4 +1,4 @@
-const CACHE = 'wpc-v1';
+const CACHE = 'wpc-v2';
 const ASSETS = [
   './',
   './index.html',
